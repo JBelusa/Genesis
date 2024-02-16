@@ -17,7 +17,6 @@ public class UserInfoController {
     @Autowired
     UserInfoService userInfoService;
 
-
     @GetMapping("/users")
     public List<UserInfo> getUsers(@RequestParam(defaultValue = "false") boolean detail) {
         return userInfoService.getAllUsers(detail);
@@ -33,7 +32,7 @@ public class UserInfoController {
     public ResponseEntity<?> createNewUser(@RequestBody UserInfo userInfo) {
         UserInfo createdUser = userInfoService.createNewUser(userInfo);
         if (createdUser == null) {
-            return new ResponseEntity<>("rozbitý",HttpStatus.NOT_FOUND);
+            return new ResponseEntity<>("personID " + userInfo.getPersonID() + " se nepodařilo vytvořit", HttpStatus.CONFLICT);
         } else {
             return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
         }
@@ -43,17 +42,13 @@ public class UserInfoController {
 
     @DeleteMapping("/user/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable("id") long id) {
-        return userInfoService.deleteUser(id);
 
-
+        if (userInfoService.deleteUser(id)) {
+            return new ResponseEntity<>("Uživatel s id " + id + " byl úspěšně vymazán.", HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("Uživatele s id " + id + " nelze vymazat - nenachází se v databázi.", HttpStatus.BAD_REQUEST);
+        }
     }
-
-    @GetMapping("/pokus/{id}")
-    public String pokusId(@PathVariable("id") String personId) {
-        return userInfoService.getStreetNameById(personId);
-
-    }
-
 }
 
 

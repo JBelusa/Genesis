@@ -2,8 +2,6 @@ package com.engeto.Genesis.service;
 
 import com.engeto.Genesis.model.UserInfo;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -11,6 +9,7 @@ import org.springframework.stereotype.Service;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class UserInfoService {
@@ -53,32 +52,35 @@ public class UserInfoService {
         });
     }
 
-
     public UserInfo createNewUser(UserInfo userInfo) {
-        jdbcTemplate.update("INSERT into users (name,surname,personID,Uuid) VALUES (?,?,?,?)", userInfo.getName(), userInfo.getSurname(), userInfo.getPersonID(), userInfo.getUuid());
-        return userInfo;
-    }
+        UUID uuid = UUID.randomUUID();
+        userInfo.setUuid(String.valueOf(uuid));
 
-
-    public ResponseEntity<String> deleteUser(long id) {
-        boolean deletionSuccessful = jdbcTemplate.update("DELETE from users where id = ?", id) > 0;
-        if (deletionSuccessful) {
-            return new ResponseEntity<>("Uživatel s id " + id + " byl úspěšně vymazán.", HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>("Uživatele s id " + id + " nelze vymazat - nenachází se v databázi.", HttpStatus.BAD_REQUEST);
+        if (userInfo.getPersonID().length() != 12) {
+            return null;
         }
 
+        if (checkNewUser(userInfo.getPersonID(), userInfo.getUuid())) {
+            return null;
+        } else {
+            jdbcTemplate.update("INSERT into users (name,surname,personID,Uuid) VALUES (?,?,?,?)", userInfo.getName(), userInfo.getSurname(), userInfo.getPersonID(), userInfo.getUuid());
+            return userInfo;
+        }
     }
 
-    public String getStreetNameById(String personID) {
-
-        String sql = "SELECT personID FROM users WHERE personID=?";
-
-        String streetName = (String) jdbcTemplate.queryForObject(sql, String.class,personID);
-
-        return streetName;
+    public boolean deleteUser(long id) {
+        return jdbcTemplate.update("DELETE from users where id = ?", id) > 0;
     }
 
+    public boolean checkNewUser(String personID, String uuid) {
 
+        String sqlPersonID = "select EXISTS (SELECT personID FROM users WHERE personID=?)";
+        boolean containsPersonID = (Integer) jdbcTemplate.queryForObject(sqlPersonID, Integer.class, personID) == 1;
+
+        String sqlUuid = "select EXISTS (SELECT personID FROM users WHERE Uuid=?)";
+        boolean containsUuid = (Integer) jdbcTemplate.queryForObject(sqlUuid, Integer.class, uuid) == 1;
+
+        return containsPersonID || containsUuid;
+    }
 }
 
