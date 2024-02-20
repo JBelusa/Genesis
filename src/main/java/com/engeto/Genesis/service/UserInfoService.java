@@ -2,6 +2,7 @@ package com.engeto.Genesis.service;
 
 import com.engeto.Genesis.model.UserInfo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -36,20 +37,24 @@ public class UserInfoService {
 
     public UserInfo getUserById(long id, boolean detail) {
         String sql = "SELECT * from users WHERE id = " + id;
-        return (UserInfo) jdbcTemplate.queryForObject(sql, new RowMapper<Object>() {
 
-            public Object mapRow(ResultSet rs, int rowNum) throws SQLException {
-                UserInfo userInfo = new UserInfo();
-                userInfo.setId(rs.getLong("ID"));
-                userInfo.setName(rs.getString("name"));
-                userInfo.setSurname(rs.getString("surname"));
-                if (detail) {
-                    userInfo.setPersonID(rs.getString("personID"));
-                    userInfo.setUuid(rs.getString("Uuid"));
+        try {
+            return (UserInfo) jdbcTemplate.queryForObject(sql, new RowMapper<Object>() {
+                public Object mapRow(ResultSet rs, int rowNum) throws SQLException {
+                    UserInfo userInfo = new UserInfo();
+                    userInfo.setId(rs.getLong("ID"));
+                    userInfo.setName(rs.getString("name"));
+                    userInfo.setSurname(rs.getString("surname"));
+                    if (detail) {
+                        userInfo.setPersonID(rs.getString("personID"));
+                        userInfo.setUuid(rs.getString("Uuid"));
+                    }
+                    return userInfo;
                 }
-                return userInfo;
-            }
-        });
+            });
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
     }
 
     public UserInfo createNewUser(UserInfo userInfo) {
@@ -73,14 +78,27 @@ public class UserInfoService {
     }
 
     public boolean checkNewUser(String personID, String uuid) {
+        boolean containsPersonID = false;
+        boolean containsUuID = false;
 
-        String sqlPersonID = "select EXISTS (SELECT personID FROM users WHERE personID=?)";
-        boolean containsPersonID = (Integer) jdbcTemplate.queryForObject(sqlPersonID, Integer.class, personID) == 1;
+        String sqlPersonID = "select EXISTS (SELECT personID FROM users WHERE personID = ?)";
+        Integer personIdExists = jdbcTemplate.queryForObject(sqlPersonID, Integer.class, personID);
 
-        String sqlUuid = "select EXISTS (SELECT personID FROM users WHERE Uuid=?)";
-        boolean containsUuid = (Integer) jdbcTemplate.queryForObject(sqlUuid, Integer.class, uuid) == 1;
+        if (personIdExists != null) {
+            containsPersonID = personIdExists == 1;
+        }
 
-        return containsPersonID || containsUuid;
+        String sqlUuid = "select EXISTS (SELECT personID FROM users WHERE Uuid = ?)";
+        Integer uuIdExists = jdbcTemplate.queryForObject(sqlUuid, Integer.class, uuid);
+        if (uuIdExists != null) {
+            containsUuID = uuIdExists == 1;
+        }
+
+        return containsPersonID || containsUuID;
+    }
+
+    public void updateUser(long id, UserInfo userInfo) {
+        jdbcTemplate.update("update users set name = ? , surname = ? where id = ?", userInfo.getName(), userInfo.getSurname(), id);
     }
 }
 

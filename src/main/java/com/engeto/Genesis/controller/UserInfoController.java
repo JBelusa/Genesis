@@ -18,14 +18,23 @@ public class UserInfoController {
     UserInfoService userInfoService;
 
     @GetMapping("/users")
-    public List<UserInfo> getUsers(@RequestParam(defaultValue = "false") boolean detail) {
-        return userInfoService.getAllUsers(detail);
+    public ResponseEntity<List<UserInfo>> getUsers(@RequestParam(defaultValue = "false") boolean detail) {
+        List<UserInfo> userList = userInfoService.getAllUsers(detail);
+        if (userList.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } else {
+            return new ResponseEntity<>(userList, HttpStatus.OK);
+        }
     }
 
     @GetMapping("/user/{id}")
-    public UserInfo getUserById(@PathVariable("id") long id, @RequestParam(defaultValue = "false") boolean detail) {
-        return userInfoService.getUserById(id, detail);
-
+    public ResponseEntity<?> getUserById(@PathVariable("id") long id, @RequestParam(defaultValue = "false") boolean detail) {
+        UserInfo userInfo = userInfoService.getUserById(id, detail);
+        if (userInfo != null) {
+            return new ResponseEntity<>(userInfo, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
     @PostMapping("/user")
@@ -36,8 +45,16 @@ public class UserInfoController {
         } else {
             return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
         }
+    }
 
-
+    @PutMapping("user/{id}")
+    public ResponseEntity<?> updateUser(@PathVariable("id") long id, @RequestBody UserInfo userinfo) {
+        if (userInfoService.getUserById(id, true) != null) {
+            userInfoService.updateUser(id, userinfo);
+            return new ResponseEntity<>("Nové jméno a přijmení uživatele: " + userinfo.getName() + " " + userinfo.getSurname(), HttpStatus.CREATED);
+        } else {
+            return new ResponseEntity<>("Uživatel s id: " + id + " nebyl nalezen", HttpStatus.NOT_FOUND);
+        }
     }
 
     @DeleteMapping("/user/{id}")
